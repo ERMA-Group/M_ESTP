@@ -1,7 +1,7 @@
 # Define a library for this submodule
 add_library(M_ESTF STATIC)
 
-set(M_ROOT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/")
+set(M_ROOT_PATH "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # Specify the source files
 target_sources(M_ESTF

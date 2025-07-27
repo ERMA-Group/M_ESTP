@@ -22,15 +22,39 @@
 #ifndef ESTF_DEF_HINC
 #define ESTF_DEF_HINC
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /**** includes ***************************************************************/
 #include <stdint.h>
 
 /**** type definitions *******************************************************/
+#define ESTF_MAX_DATA_LEN 32U
+#define ESTF_SAUCE_SIZE   3U
+#define ESTF_HEADER_SIZE  2U
 
+typedef struct {
+    uint8_t  frameId;      // Unique identifier for the frame
+    uint8_t  dataLength;   // Length of the data
+    uint8_t  data[ESTF_MAX_DATA_LEN];         // Pointer to the data buffer
+    uint8_t  checksum;     // Checksum for error checking
+} ESTF_Frame_t;
 
+typedef union {
+    ESTF_Frame_t frame;
+    uint8_t raw[sizeof(ESTF_Frame_t)];
+} ESTF_Packet_t;
 
+typedef struct {
+    uint8_t index;
+    uint8_t buffer[sizeof(ESTF_Packet_t)];
+} ESTF_ReceiverBuffer_t;
 
 /**** function prototypes ****************************************************/
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ESTF_DEF_HINC */
 /**** end of file ************************************************************/

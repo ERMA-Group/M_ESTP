@@ -24,14 +24,21 @@
 
 /**** includes ***************************************************************/
 #include "estf_def.h"
-#include "estf_cfg.h"
-#include "estf_cbk.h"
 
 /**** type definitions *******************************************************/
 
 
 /**** function prototypes ****************************************************/
-void ESTF_Init(void);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+ESTF_Packet_t ESTF_CreatePacket(uint8_t au8_frameId, uint8_t * au8_dataP, uint8_t au8_dataLength);
+void ESTF_ProcessByte(uint8_t byte);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ESTF_HINC */
 /**** end of file ************************************************************/
