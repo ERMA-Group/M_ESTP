@@ -1,5 +1,5 @@
 /**
- * @file estf.h
+ * @file estp.h
  * @brief Public interface for the STP LED Driver module.
  *
  * Provides function declarations, macros, and data structures
