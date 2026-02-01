@@ -5,7 +5,7 @@ set(M_ROOT_PATH "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # Specify the source files
 target_sources(M_ESTP
-PUBLIC
+PRIVATE
 	${M_ROOT_PATH}/src/estp.cpp
 )
 

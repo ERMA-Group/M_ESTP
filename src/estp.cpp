@@ -121,7 +121,7 @@ void Estp::processByte(const uint8_t byte) noexcept
         rx_buffer_.fill(0);
         rx_index_ = 0;
     }
-    else if (byte == EOF && rx_status_ == Estp::Status::kProcesing)
+    else if (byte == EOFRM && rx_status_ == Estp::Status::kProcesing)
     {
         /* End of Frame detected */
         rx_status_ = Estp::Status::kEof;
@@ -173,7 +173,13 @@ EstpFrame Estp::deserialize(const uint8_t* in_buffer, const uint8_t length) noex
     std::array<uint8_t, EstpFrame::kMaxDataLength> data {};
     uint16_t checksum {0};
     // Frame ID
+    // first byte handling - can be either ID or SOF, depends on implementation
     uint8_t byte = in_buffer[index++];
+    if (byte == SOF)
+    {
+        // ignore SOF character
+        byte = in_buffer[index++];
+    }
     if (byte == ESC)
     {
         byte = in_buffer[index++] ^ XOR_MASK;
@@ -233,7 +239,7 @@ uint8_t Estp::serialize(const EstpFrame& frame, uint8_t* out_buffer) noexcept
     uint16_t frame_id {frame.getFrameId()};
     uint8_t frame_id_high {static_cast<uint8_t>((frame_id >> 8) & 0xFF)};
     uint8_t frame_id_low {static_cast<uint8_t>(frame_id & 0xFF)};
-    if (frame_id_high == SOF || frame_id_high == ESC || frame_id_high == EOF)
+    if (frame_id_high == SOF || frame_id_high == ESC || frame_id_high == EOFRM)
     {
         out_buffer[index++] = ESC;
         out_buffer[index++] = frame_id_high ^ XOR_MASK;
@@ -242,7 +248,7 @@ uint8_t Estp::serialize(const EstpFrame& frame, uint8_t* out_buffer) noexcept
     {
         out_buffer[index++] = frame_id_high;
     }
-    if (frame_id_low == SOF || frame_id_low == ESC || frame_id_low == EOF)
+    if (frame_id_low == SOF || frame_id_low == ESC || frame_id_low == EOFRM)
     {
         out_buffer[index++] = ESC;
         out_buffer[index++] = frame_id_low ^ XOR_MASK;
@@ -254,7 +260,7 @@ uint8_t Estp::serialize(const EstpFrame& frame, uint8_t* out_buffer) noexcept
 
     // Serialize data length
     uint8_t data_length {frame.getDataLength()};
-    if (data_length == SOF || data_length == ESC || data_length == EOF)
+    if (data_length == SOF || data_length == ESC || data_length == EOFRM)
     {
         out_buffer[index++] = ESC;
         out_buffer[index++] = data_length ^ XOR_MASK;
@@ -268,7 +274,7 @@ uint8_t Estp::serialize(const EstpFrame& frame, uint8_t* out_buffer) noexcept
     const uint8_t* data {frame.getData()};
     for (uint8_t i {0}; i < data_length; i++)
     {
-        if (data[i] == SOF || data[i] == ESC || data[i] == EOF)
+        if (data[i] == SOF || data[i] == ESC || data[i] == EOFRM)
         {
             out_buffer[index++] = ESC;
             out_buffer[index++] = data[i] ^ XOR_MASK;
@@ -284,7 +290,7 @@ uint8_t Estp::serialize(const EstpFrame& frame, uint8_t* out_buffer) noexcept
     uint8_t checksum_high {static_cast<uint8_t>((checksum >> 8) & 0xFF)};
     uint8_t checksum_low {static_cast<uint8_t>(checksum & 0xFF)};
 
-    if (checksum_high == SOF || checksum_high == ESC || checksum_high == EOF)
+    if (checksum_high == SOF || checksum_high == ESC || checksum_high == EOFRM)
     {
         out_buffer[index++] = ESC;
         out_buffer[index++] = checksum_high ^ XOR_MASK;
@@ -294,7 +300,7 @@ uint8_t Estp::serialize(const EstpFrame& frame, uint8_t* out_buffer) noexcept
         out_buffer[index++] = checksum_high;
     }
 
-    if (checksum_low == SOF || checksum_low == ESC || checksum_low == EOF)
+    if (checksum_low == SOF || checksum_low == ESC || checksum_low == EOFRM)
     {
         out_buffer[index++] = ESC;
         out_buffer[index++] = checksum_low ^ XOR_MASK;
@@ -303,7 +309,7 @@ uint8_t Estp::serialize(const EstpFrame& frame, uint8_t* out_buffer) noexcept
     {
         out_buffer[index++] = checksum_low;
     }
-    out_buffer[index++] = EOF;
+    out_buffer[index++] = EOFRM;
 
     return index; // Return the total length of the serialized frame
 }

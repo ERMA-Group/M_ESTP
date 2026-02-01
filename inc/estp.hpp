@@ -20,10 +20,11 @@ namespace m_estp {
  */
 class EstpFrame {
 public:
-    static constexpr uint8_t kMaxDataLength {32};
+    static constexpr uint8_t kMaxDataLength {255};
     static constexpr uint8_t kHeaderSize {3}; // frameId (2 bytes) + dataLength
     static constexpr uint8_t kChecksumSize {2};
-    static constexpr uint8_t kMaxFrameSize {kHeaderSize + kMaxDataLength + kChecksumSize};
+    static constexpr uint16_t kMaxFrameSize {kHeaderSize + kMaxDataLength + kChecksumSize};
+    static constexpr uint8_t kMinRawFrameSize {2 + kHeaderSize + 0 + kChecksumSize}; // SOF + header + checksum + EOF
 
     EstpFrame() noexcept;
     EstpFrame(const uint16_t frame_id, const uint8_t* data_p, const uint8_t data_length) noexcept;
@@ -106,7 +107,7 @@ class Estp {
 public:
     static constexpr uint8_t SOF {0x7E}; /* Start of Frame */
     static constexpr uint8_t ESC {0x7D}; /* Escape character */
-    static constexpr uint8_t EOF {0x7F}; /* End of Frame */
+    static constexpr uint8_t EOFRM {0x7F}; /* End of Frame */
     static constexpr uint8_t XOR_MASK {0x20}; /* Mask for byte stuffing */
 
     /* double size for stuffing, SOF and EOF are skipped during byte processing*/
