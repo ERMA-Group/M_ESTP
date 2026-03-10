@@ -5,108 +5,6 @@
 
 #include "estp.hpp"   // C++ class definition
 namespace m_estp {
-
-/**
- * ESTP frame class implementation
- */
-EstpFrame::EstpFrame() noexcept
-    : frame_id_(0),
-      data_length_(0),
-      checksum_(0)
-{
-    data_.fill(0);
-}
-
-EstpFrame::EstpFrame(const uint16_t frame_id, const uint8_t* data_p, const uint8_t data_length) noexcept
-    : frame_id_(frame_id),
-      data_length_(data_length),
-      checksum_(0)
-{
-    if (data_length_ > kMaxDataLength) {
-        data_length_ = kMaxDataLength;
-    }
-    std::copy(data_p, data_p + data_length_, data_.begin());
-    calculateChecksum();
-}
-
-EstpFrame::EstpFrame(const uint16_t frame_id, const uint8_t* data_p, const uint8_t data_length, const uint16_t checksum) noexcept
-    : frame_id_(frame_id),
-      data_length_(data_length),
-      checksum_(checksum)
-{
-    if (data_length_ > kMaxDataLength) {
-        data_length_ = kMaxDataLength;
-    }
-    std::copy(data_p, data_p + data_length_, data_.begin());
-}
-
-uint8_t EstpFrame::getLength() const noexcept
-{
-    return data_length_;
-}
-
-uint16_t EstpFrame::getFrameId() const noexcept
-{
-    return frame_id_;
-}
-
-uint8_t EstpFrame::getDataLength() const noexcept
-{
-    return data_length_;
-}
-
-const uint8_t* EstpFrame::getData() const noexcept
-{
-    return data_.data();
-}
-
-void EstpFrame::calculateChecksum() noexcept
-{
-    checksum_ = Estp::calculateChecksum(data_.data(), data_length_);
-}
-
-uint16_t EstpFrame::getChecksum() const noexcept
-{
-    return checksum_;
-}
-
-/**
- * @brief Validate the checksum of the frame.
- * @return true if checksum is valid, false otherwise.
- */
-bool EstpFrame::validateChecksum() const noexcept
-{
-    uint16_t calculated_checksum {0};
-    calculated_checksum = Estp::calculateChecksum(data_.data(), data_length_);
-    return (calculated_checksum == checksum_);
-}
-
-uint8_t EstpFrame::getFrameSize() const noexcept
-{
-    return kHeaderSize + data_length_ + kChecksumSize;
-}
-
-void EstpFrame::setFrameId(const uint16_t frame_id) noexcept
-{
-    frame_id_ = frame_id;
-}
-
-/**
- * @brief Set data for the frame.
- * @param dataP Pointer to the data array.
- * @param dataLength Length of the data array.
- * @note If dataLength exceeds kMaxDataLength, it will be truncated. Checksum is recalculated.
- */
-void EstpFrame::setData(const uint8_t* dataP, uint8_t dataLength) noexcept
-{
-    if (dataLength > kMaxDataLength) {
-        dataLength = kMaxDataLength;
-    }
-    data_length_ = dataLength;
-    std::copy(dataP, dataP + dataLength, data_.begin());
-    calculateChecksum();
-}
-
 /********************************************************************** */
 /**
  * ESTF handler class implementation
@@ -129,7 +27,7 @@ void Estp::processByte(const uint8_t byte) noexcept
         if (onFrameReceived_ != nullptr)
         {
             /* Deserialize the received buffer into a frame and invoke the callback */
-            EstpFrame frame = deserialize(rx_buffer_.data(), rx_index_);
+            EstpFrame<> frame = deserialize(rx_buffer_.data(), rx_index_);
             onFrameReceived_(frame);
         }
         rx_status_ = Estp::Status::kIdle;
@@ -160,17 +58,17 @@ void Estp::processByte(const uint8_t byte) noexcept
  * @param length Length of the input byte buffer.
  * @return Deserialized EstpFrame object.
  */
-EstpFrame Estp::deserialize(const uint8_t* in_buffer, const uint8_t length) noexcept
+EstpFrame<> Estp::deserialize(const uint8_t* in_buffer, const uint8_t length) noexcept
 {
-    if (length < EstpFrame::kHeaderSize + EstpFrame::kChecksumSize)
+    if (length < EstpFrame<>::kHeaderSize + EstpFrame<>::kChecksumSize)
     {
-        return EstpFrame(); // Return empty frame on error
+        return EstpFrame<>(); // Return empty frame on error
     }
     uint8_t index {0};
     // Extract frame ID, data length, data, and checksum, handling byte stuffing
     uint16_t frame_id {0};
     uint8_t data_length {0};
-    std::array<uint8_t, EstpFrame::kMaxDataLength> data {};
+    std::array<uint8_t, EstpFrame<>::kMaxDataLength> data {};
     uint16_t checksum {0};
     // Frame ID
     // first byte handling - can be either ID or SOF, depends on implementation
@@ -221,7 +119,7 @@ EstpFrame Estp::deserialize(const uint8_t* in_buffer, const uint8_t length) noex
         byte = in_buffer[index++] ^ XOR_MASK;
     }
     checksum |= static_cast<uint16_t>(byte);
-    return EstpFrame(frame_id, data.data(), data_length, checksum);
+    return EstpFrame<>(frame_id, data.data(), data_length, checksum);
 }
 
 /**
@@ -230,7 +128,7 @@ EstpFrame Estp::deserialize(const uint8_t* in_buffer, const uint8_t length) noex
  * @param out_buffer Pointer to the output byte buffer.
  * @return The size of the serialized frame in bytes.
  */
-uint8_t Estp::serialize(const EstpFrame& frame, uint8_t* out_buffer) noexcept
+uint8_t Estp::serialize(const EstpFrame<>& frame, uint8_t* out_buffer) noexcept
 {
     uint8_t index {0};
     out_buffer[index++] = SOF;
@@ -259,7 +157,7 @@ uint8_t Estp::serialize(const EstpFrame& frame, uint8_t* out_buffer) noexcept
     }
 
     // Serialize data length
-    uint8_t data_length {frame.getDataLength()};
+    uint8_t data_length {static_cast<uint8_t>(frame.getLength())};
     if (data_length == SOF || data_length == ESC || data_length == EOFRM)
     {
         out_buffer[index++] = ESC;

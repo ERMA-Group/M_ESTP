@@ -11,83 +11,13 @@
 #include <array>
 #include <algorithm>
 #include <functional>
+#include "estp_frame.hpp"
+
+extern "C" {
+#include "estp.h"
+}
 
 namespace m_estp {
-/**
- * @class EstpFrame
- * @brief Class representing a single ESTP frame.
- * This class encapsulates the frame ID, data payload, length, and checksum.
- */
-class EstpFrame {
-public:
-    static constexpr uint8_t kMaxDataLength {255};
-    static constexpr uint8_t kHeaderSize {3}; // frameId (2 bytes) + dataLength
-    static constexpr uint8_t kChecksumSize {2};
-    static constexpr uint16_t kMaxFrameSize {kHeaderSize + kMaxDataLength + kChecksumSize};
-    static constexpr uint8_t kMinRawFrameSize {2 + kHeaderSize + 0 + kChecksumSize}; // SOF + header + checksum + EOF
-
-    EstpFrame() noexcept;
-    EstpFrame(const uint16_t frame_id, const uint8_t* data_p, const uint8_t data_length) noexcept;
-    EstpFrame(const uint16_t frame_id, const uint8_t* data_p, const uint8_t data_length, const uint16_t checksum) noexcept;
-    ~EstpFrame() = default;
-
-    /**
-     * @brief Get the length of the data payload.
-     * @return Length of the data array.
-     */
-    uint8_t getLength() const noexcept;
-
-    /**
-     * @brief Get the frame ID.
-     * @return Frame ID.
-     */
-    uint16_t getFrameId() const noexcept;
-
-    /**
-     * @brief Get the length of the data payload.
-     * @return Length of the data array.
-     */
-    uint8_t getDataLength() const noexcept;
-
-    /**
-     * @brief Get pointer to the data payload.
-     * @return Pointer to the data array.
-     */
-    const uint8_t* getData() const noexcept;
-
-    /**
-     * @brief Calculate and update the checksum of the frame.
-     */
-    void calculateChecksum() noexcept;
-
-    /**
-     * @brief Get the checksum of the frame.
-     * @return The checksum value.
-     */
-    uint16_t getChecksum() const noexcept;
-
-    /**
-     * @brief Validate the checksum of the frame - raw data vs. calculated checksum.
-     * @return true if checksum is valid, false otherwise.
-     */
-    bool validateChecksum() const noexcept;
-
-    /**
-     * @brief Get the total size of the frame including header, data, and checksum.
-     * @return Total frame size in bytes.
-     */
-    uint8_t getFrameSize() const noexcept;
-
-    void setFrameId(const uint16_t frame_id) noexcept;
-    void setData(const uint8_t* dataP, uint8_t dataLength) noexcept;
-
-private:
-    uint16_t frame_id_;
-    uint8_t data_length_;
-    uint16_t checksum_;
-    std::array<uint8_t, kMaxDataLength> data_;
-};
-
 /**
  * @class Estp
  * @brief Class for handling ESTF frame serialization and deserialization.
@@ -102,7 +32,8 @@ class Estp {
         kError = 10
     };
 
-    using FrameCallback = std::function<void(const EstpFrame&)>; /* Callback for processed frames */
+    using Frame = EstpFrame<>;
+    using FrameCallback = std::function<void(const Frame&)>; /* Callback for processed frames */
 
 public:
     static constexpr uint8_t SOF {0x7E}; /* Start of Frame */
@@ -111,7 +42,7 @@ public:
     static constexpr uint8_t XOR_MASK {0x20}; /* Mask for byte stuffing */
 
     /* double size for stuffing, SOF and EOF are skipped during byte processing*/
-    static constexpr uint16_t kMaxTransmissionSize {(EstpFrame::kMaxFrameSize*2)};
+    static constexpr uint16_t kMaxTransmissionSize {(Frame::kMaxFrameSize * 2U)};
 
     /* Constructor and Destructor */
     Estp() noexcept = default;
@@ -138,7 +69,7 @@ public:
      * @param length Length of the input byte buffer.
      * @return Deserialized EstpFrame object.
      */
-    static EstpFrame deserialize(const uint8_t* in_buffer, const uint8_t length) noexcept;
+    static Frame deserialize(const uint8_t* in_buffer, const uint8_t length) noexcept;
 
     /**
      * @brief Serialize an ESTP frame into a byte buffer.
@@ -146,7 +77,7 @@ public:
      * @param out_buffer Pointer to the output byte buffer.
      * @return The size of the serialized frame in bytes.
      */
-    static uint8_t serialize(const EstpFrame& frame, uint8_t* out_buffer) noexcept;
+    static uint8_t serialize(const Frame& frame, uint8_t* out_buffer) noexcept;
 
     /**
      * @brief Calculate checksum for given data.
@@ -163,4 +94,4 @@ private:
     std::array<uint8_t, (kMaxTransmissionSize)> rx_buffer_;
 };
 
-} // namespace m_estf
+} // namespace m_estp
