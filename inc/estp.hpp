@@ -80,12 +80,13 @@ public:
     static uint8_t serialize(const Frame& frame, uint8_t* out_buffer) noexcept;
 
     /**
-     * @brief Calculate checksum for given data.
+     * @brief Calculate the checksum of a frame (frame ID, data length, and data).
+     * @param frame_id Frame ID.
      * @param data Pointer to the data array.
      * @param length Length of the data array.
      * @return Calculated checksum.
      */
-    static uint16_t calculateChecksum(const uint8_t* data, const uint8_t length) noexcept;
+    static uint16_t calculateChecksum(const uint16_t frame_id, const uint8_t* data, const uint8_t length) noexcept;
 
 private:
     FrameCallback onFrameReceived_ = nullptr; /* User-defined callback for received frames */

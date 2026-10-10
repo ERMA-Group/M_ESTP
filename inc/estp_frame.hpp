@@ -88,8 +88,19 @@ public:
         return (incoming > last) || (last - incoming > 32768);
     }
 
+    /**
+     * @brief CRC-16/CCITT-FALSE (polynomial 0x1021, start 0xFFFF) of a frame.
+     * The checksum covers the frame ID (high byte first), the data length, and the data,
+     * so a corrupted frame ID or length is detected as well as corrupted data.
+     * @param frame_id Frame ID.
+     * @param data Pointer to the data array.
+     * @param length Length of the data array.
+     * @return Calculated checksum.
+     */
+    static uint16_t computeChecksum(const uint16_t frame_id, const uint8_t* data, const uint16_t length) noexcept;
+
 private:
-    static uint16_t calculateChecksum_(const uint8_t* data, uint16_t length) noexcept;
+    static uint16_t updateCrc_(uint16_t crc, const uint8_t* data, uint16_t length) noexcept;
 
     uint16_t frame_id_;
     uint16_t rolling_counter_;
@@ -162,7 +173,7 @@ const uint8_t* EstpFrame<MAX_DATA_LENGTH>::getData() const noexcept
 template<uint16_t MAX_DATA_LENGTH>
 void EstpFrame<MAX_DATA_LENGTH>::calculateChecksum() noexcept
 {
-    checksum_ = calculateChecksum_(data_.data(), data_length_);
+    checksum_ = computeChecksum(frame_id_, data_.data(), data_length_);
 }
 
 template<uint16_t MAX_DATA_LENGTH>
@@ -179,14 +190,20 @@ template<uint16_t MAX_DATA_LENGTH>
 bool EstpFrame<MAX_DATA_LENGTH>::validateChecksum() const noexcept
 {
     uint16_t calculated_checksum {0};
-    calculated_checksum = calculateChecksum_(data_.data(), data_length_);
+    calculated_checksum = computeChecksum(frame_id_, data_.data(), data_length_);
     return (calculated_checksum == checksum_);
 }
 
+/**
+ * @brief Set the frame ID.
+ * @param frame_id Frame ID.
+ * @note The checksum covers the frame ID, so it is recalculated.
+ */
 template<uint16_t MAX_DATA_LENGTH>
 void EstpFrame<MAX_DATA_LENGTH>::setFrameId(const uint16_t frame_id) noexcept
 {
     frame_id_ = frame_id;
+    calculateChecksum();
 }
 
 /**
@@ -253,9 +270,21 @@ bool EstpFrame<MAX_DATA_LENGTH>::unprotect(uint16_t secret_key, uint16_t last_co
 }
 
 template<uint16_t MAX_DATA_LENGTH>
-uint16_t EstpFrame<MAX_DATA_LENGTH>::calculateChecksum_(const uint8_t* data, uint16_t length) noexcept
+uint16_t EstpFrame<MAX_DATA_LENGTH>::computeChecksum(const uint16_t frame_id, const uint8_t* data, const uint16_t length) noexcept
 {
-    uint16_t crc = 0xFFFF;
+    // Header as it is sent: frame ID high byte, frame ID low byte, data length
+    const uint8_t header[kHeaderSize] {
+        static_cast<uint8_t>((frame_id >> 8) & 0xFFU),
+        static_cast<uint8_t>(frame_id & 0xFFU),
+        static_cast<uint8_t>(length & 0xFFU)
+    };
+    uint16_t crc = updateCrc_(0xFFFFU, header, kHeaderSize);
+    return updateCrc_(crc, data, length);
+}
+
+template<uint16_t MAX_DATA_LENGTH>
+uint16_t EstpFrame<MAX_DATA_LENGTH>::updateCrc_(uint16_t crc, const uint8_t* data, uint16_t length) noexcept
+{
     for (uint16_t i = 0; i < length; ++i)
     {
         crc ^= static_cast<uint16_t>(data[i]) << 8;

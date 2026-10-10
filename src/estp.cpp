@@ -213,30 +213,15 @@ uint8_t Estp::serialize(const EstpFrame<>& frame, uint8_t* out_buffer) noexcept
 }
 
 /**
- * @brief Calculate checksum for given data.
+ * @brief Calculate the checksum of a frame (frame ID, data length, and data).
+ * @param frame_id Frame ID.
  * @param data Pointer to the data array.
  * @param length Length of the data array.
  * @return Calculated checksum.
  */
-uint16_t Estp::calculateChecksum(const uint8_t* data, const uint8_t length) noexcept
+uint16_t Estp::calculateChecksum(const uint16_t frame_id, const uint8_t* data, const uint8_t length) noexcept
 {
-    uint16_t crc = 0xFFFF;
-    for (uint8_t i = 0; i < length; i++)
-    {
-        crc ^= (uint16_t)data[i] << 8;
-        for (uint8_t j = 0; j < 8; j++)
-        {
-            if (crc & 0x8000)
-            {
-                crc = (crc << 1) ^ 0x1021;
-            }
-            else
-            {
-                crc <<= 1;
-            }
-        }
-    }
-    return crc;
+    return EstpFrame<>::computeChecksum(frame_id, data, length);
 }
 
 } // namespace m_estp
